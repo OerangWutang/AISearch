@@ -1,14 +1,69 @@
-# TrialGuard (MVP)
+# SubView
 
-TrialGuard is a privacy-first MV3 browser extension that detects likely trial/subscription checkouts before transaction completion, then helps users set cancel reminders and find manage/cancel paths.
+SubView is a privacy-first Manifest V3 browser extension that detects likely trial/subscription checkouts before completion, then helps users set local reminders and find cancel/manage paths.
 
-## Privacy Statement
+## Why SubView
+
+- Detects trial/subscription checkout signals in-page before commitment.
+- Adds a just-in-time, non-blocking warning overlay.
+- Lets users schedule local reminders and export `.ics` events.
+- Keeps detection and storage local to the browser.
+
+## Privacy First
 
 - Detection runs locally in the browser.
 - No bank/email access.
 - No page content is uploaded.
-- No remote API calls in MVP.
-- Stored data is limited to domain metadata and reminder configuration.
+- No remote API calls for heuristic detection in MVP.
+- Stored data is limited to extension settings and reminder metadata.
+
+## Features
+
+- Heuristic trial/subscription detection with confidence scoring.
+- SPA-aware rescans after in-app navigation and DOM mutations.
+- Interception flow with replay-safe continue behavior for modern SPAs.
+- Reminder scheduling via `chrome.alarms` and `chrome.notifications`.
+- ICS export for reminder events.
+- Local dark-pattern hints (`difficulty`, `method`, `steps`, `manageUrl`).
+- Local user reports for cancellation difficulty.
+- Optional debug HUD (`debugOverlay`) for tuning.
+
+## Quick Start
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Build extension:
+
+```bash
+npm run build
+```
+
+3. Load unpacked extension from `dist/` in Chrome/Edge.
+
+## Build Modes
+
+- `npm run build` uses `manifest.json` (public mode).
+- `npm run build:dev` uses `manifest.dev.json` (dev mode with broader host model).
+- Both output to `dist/`.
+
+## Development Commands
+
+```bash
+npm run watch       # dev rebuild on file changes
+npm run typecheck   # TypeScript checks
+npm run test        # Vitest unit tests
+npm run test:watch  # Vitest watch mode
+```
+
+## Permissions Model
+
+- Uses `optional_host_permissions` for `<all_urls>`.
+- On onboarding, users can explicitly grant all-sites access.
+- If not granted, popup/options still work while detection stays inactive on pages.
 
 ## Stored Data
 
@@ -19,67 +74,58 @@ TrialGuard is a privacy-first MV3 browser extension that detects likely trial/su
 - `tg_darkpatterns_base`
 - `tg_darkpatterns_user`
 - `tg_user_reports`
-- `tg_notification_map` (TTL map for notification action routing)
+- `tg_notification_map` (TTL routing for notification actions)
+- `tg_pending_detection_by_tab` (session-only pending interception state)
 
-## Build
+## Testing
 
-1. Install dependencies:
+- Unit tests run with Vitest + JSDOM.
+- Current suites focus on:
+  - Interceptor replay resilience in SPA-like DOM teardown cases.
+  - Detector lazy context evaluation and trial parsing behavior.
 
-```bash
-npm install
+## CI
+
+GitHub Actions workflow: `.github/workflows/ci.yml`
+
+Pipeline steps:
+
+1. Install dependencies
+2. `npm run typecheck`
+3. `npm run test`
+4. `npm run build`
+
+Triggers:
+
+- Push to `main` or `master`
+- Pull requests to `main` or `master`
+- Manual dispatch
+
+## Project Structure
+
+```
+src/
+  background/   # service worker, storage, reminders, ICS
+  content/      # observer, heuristics, detector, interceptor, overlay
+  options/      # options UI
+  popup/        # popup UI
+  shared/       # shared types, messaging, domain/time/utils
 ```
 
-2. Build production manifest (optional host permission model):
+## Manual Acceptance Checklist
 
-```bash
-npm run build
-```
-
-3. Build dev manifest (`<all_urls>` host permission):
-
-```bash
-npm run build:dev
-```
-
-4. Load unpacked extension from `dist/` in Chrome/Edge.
-
-## Public vs Dev Manifests
-
-- `npm run build` copies `manifest.json` to `dist/manifest.json`.
-- `npm run build:dev` copies `manifest.dev.json` to `dist/manifest.json`.
-
-## Permission Onboarding
-
-- On install/update, if `requestAllSitesOnStartup` is enabled, Options opens automatically.
-- Click **Enable on all sites** to grant `optional_host_permissions` for `<all_urls>`.
-- If declined, popup/options still work, but detection is inactive.
-
-## Core Features
-
-- Heuristic trial/subscription detection with confidence scoring.
-- SPA-aware rescans (`pushState`, `replaceState`, `popstate`).
-- Just-in-time overlay on likely commit actions.
-- Reminder scheduling via `chrome.alarms` + `chrome.notifications`.
-- ICS export for reminder events.
-- Local dark-pattern hints (`difficulty`, `method`, `steps`, `manageUrl`).
-- Local report capture for cancellation difficulty.
-- Debug HUD (`debugOverlay`) for detection tuning.
-
-## Manual Acceptance Tests
-
-1. Open a mock checkout page containing `14 days free trial then $9.99/month`.
-2. Confirm detection result reaches high confidence and appears in debug HUD when enabled.
-3. Click a commit button (`Start trial`, `Subscribe`, etc.) and verify overlay appears before navigation.
-4. Dismiss overlay and verify interceptor disarms after timeout/dismiss behavior.
-5. Add reminder and verify an alarm is scheduled.
-6. Trigger alarm time (or dev fast-track) and verify notification appears.
-7. Click notification body/button and verify destination tab opens (site/manage link).
-8. Download ICS and verify event fields (`UID`, `DTSTAMP`, `DTSTART`, `SUMMARY`, optional `URL`).
-9. Verify ring buffer keeps only last 50 detections.
-10. Disable domain and verify detection overlay no longer appears there.
-11. Export/import local data and verify settings/reminders are restored with migration-safe keys.
+1. Trial text is detected on a checkout-like page.
+2. Interceptor overlay appears before commit action.
+3. Continue resumes correctly (including SPA fallback cases).
+4. Dismiss does not force checkout continuation.
+5. Reminder is saved and alarm is scheduled.
+6. Notification opens site/manage destination.
+7. ICS file downloads with valid event fields.
+8. Disabled domain suppresses interception.
+9. Export/import round trip restores data safely.
 
 ## Known MVP Limitations
 
-- `domainKey` is best-effort registrable-domain parsing and may be imperfect for some TLD edge cases.
-- Google Calendar OAuth integration is intentionally stubbed (not implemented).
+- `domainKey` parsing is best-effort and not full public-suffix coverage.
+- Google Calendar OAuth integration is intentionally not implemented in MVP.
+
