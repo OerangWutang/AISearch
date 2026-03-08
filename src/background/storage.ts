@@ -192,21 +192,21 @@ export async function getReports(): Promise<UserReport[]> {
   return (await storageGet<UserReport[]>(STORAGE_KEYS.userReports)) ?? [];
 }
 
+const DEDUPE_WINDOW_MS = 30 * 60 * 1000;
+const DEDUPE_CANCEL_TOLERANCE_MS = 24 * 60 * 60 * 1000;
+
 export function findDuplicateReminder(
   reminders: ReminderRecord[],
   candidate: Pick<ReminderRecord, "domainKey" | "kind" | "trialDays" | "cancelAt">,
   nowMs: number
 ): ReminderRecord | null {
-  const THIRTY_MIN_MS = 30 * 60 * 1000;
-  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-
   for (const reminder of reminders) {
     const sameDomain = reminder.domainKey === candidate.domainKey;
     const sameKind = reminder.kind === candidate.kind;
     const sameTrialDays = (reminder.trialDays ?? null) === (candidate.trialDays ?? null);
     const closeCancelAt =
-      Math.abs(new Date(reminder.cancelAt).getTime() - new Date(candidate.cancelAt).getTime()) <= TWENTY_FOUR_HOURS_MS;
-    const recentCreation = nowMs - new Date(reminder.createdAt).getTime() <= THIRTY_MIN_MS;
+      Math.abs(new Date(reminder.cancelAt).getTime() - new Date(candidate.cancelAt).getTime()) <= DEDUPE_CANCEL_TOLERANCE_MS;
+    const recentCreation = nowMs - new Date(reminder.createdAt).getTime() <= DEDUPE_WINDOW_MS;
 
     if (sameDomain && sameKind && sameTrialDays && closeCancelAt && recentCreation) {
       return reminder;
