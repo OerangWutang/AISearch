@@ -235,12 +235,16 @@ async function init(): Promise<void> {
       return;
     }
 
-    const text = await file.text();
-    const parsed = JSON.parse(text) as ImportExportBlob;
-    await sendMessage({ type: "IMPORT_LOCAL_DATA", payload: { data: parsed } });
-    settings = await sendMessage<UserSettings>({ type: "GET_SETTINGS" });
-    renderDisabledDomains(settings);
-    setStatus("Import completed");
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as ImportExportBlob;
+      await sendMessage({ type: "IMPORT_LOCAL_DATA", payload: { data: parsed } });
+      settings = await sendMessage<UserSettings>({ type: "GET_SETTINGS" });
+      renderDisabledDomains(settings);
+      setStatus("Import completed");
+    } catch (error) {
+      setStatus(`Import failed: ${error instanceof Error ? error.message : "Invalid JSON file"}`);
+    }
   });
 }
 

@@ -25,7 +25,7 @@ function reminderIdFromAlarm(alarmName: string): string | null {
 
 function createNotification(
   notificationId: string,
-  options: chrome.notifications.NotificationOptions
+  options: chrome.notifications.NotificationCreateOptions
 ): Promise<string> {
   return new Promise((resolve) => {
     chrome.notifications.create(notificationId, options, (createdId) => resolve(createdId));
@@ -151,7 +151,7 @@ export async function handleReminderAlarm(alarmName: string): Promise<void> {
   }
 
   const notificationId = `trialguard:notice:${reminder.id}:${Date.now()}`;
-  const options: chrome.notifications.NotificationOptions = {
+  const options: chrome.notifications.NotificationCreateOptions = {
     type: "basic",
     iconUrl: "icons/icon128.png",
     title: `Cancel your trial for ${reminder.domainKey}`,
@@ -168,6 +168,14 @@ export async function handleReminderAlarm(alarmName: string): Promise<void> {
   await putNotificationMapItem(createdId, reminder.id);
 }
 
+async function completeReminder(reminderId: string): Promise<void> {
+  const reminders = await getReminders();
+  const next = reminders.map((item): ReminderRecord =>
+    item.id === reminderId ? { ...item, status: "completed" } : item
+  );
+  await setReminders(next);
+}
+
 export async function handleNotificationClicked(notificationId: string): Promise<void> {
   const reminderId = await getReminderIdFromNotification(notificationId);
   if (!reminderId) {
@@ -180,6 +188,7 @@ export async function handleNotificationClicked(notificationId: string): Promise
   }
 
   await createTab(`https://${reminder.hostname}`);
+  await completeReminder(reminder.id);
   await clearNotification(notificationId);
 }
 
@@ -200,6 +209,7 @@ export async function handleNotificationButtonClicked(notificationId: string, bu
     await createTab(`https://${reminder.hostname}`);
   }
 
+  await completeReminder(reminder.id);
   await clearNotification(notificationId);
 }
 

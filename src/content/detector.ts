@@ -84,7 +84,7 @@ function extractTrialDays(text: string): { days: number; evidence?: string } | n
   const value = /^\d+$/.test(rawValue) ? Number(rawValue) : NUMBER_WORDS[rawValue];
   const unit = match[2].toLowerCase();
 
-  if (Number.isNaN(value) || value <= 0 || value === undefined) {
+  if (value === undefined || Number.isNaN(value) || value <= 0) {
     return null;
   }
 
@@ -101,7 +101,7 @@ function extractTrialDays(text: string): { days: number; evidence?: string } | n
 
 function extractPriceAfterTrial(text: string): string | undefined {
   const match = text.match(
-    /(?:then|renew(?:s|al)?(?:\s+at|\s+on)?|billed|charged)[^$€£¥₹\d]{0,20}((?:[$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s?\d+(?:[.,]\d{1,2})?(?:\s*\/?\s*(?:month|year|week|mo|yr))?)/i
+    /(?:then|renew(?:s|al)?(?:\s+at|\s+on)?|billed|charged)[^$€£¥₹\d]{0,20}((?:[$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s?\d+(?:[.,]\d{1,2})?(?:\s*(?:\/\s*|per\s+)?(?:month|year|week|mo|yr))?)/i
   );
   return match?.[1]?.replace(/\s+/g, " ").trim();
 }
