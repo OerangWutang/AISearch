@@ -63,7 +63,11 @@ async function run(): Promise<void> {
     void sendMessage({
       type: "SET_PENDING_DETECTION",
       payload: { detection }
-    }).catch(() => undefined);
+    }).catch((error) => {
+      if (settings.debugOverlay) {
+        console.error("TrialGuard: failed to set pending detection", error);
+      }
+    });
     void openInterceptionModal(detection);
   }, settings.keywordOverrides);
 
@@ -119,7 +123,11 @@ async function run(): Promise<void> {
         detectedAtUrl: detection.detectedAtUrl,
         ts: new Date().toISOString()
       };
-      void sendMessage({ type: "UPSERT_DETECTION_EVENT", payload: { event } }).catch(() => undefined);
+      void sendMessage({ type: "UPSERT_DETECTION_EVENT", payload: { event } }).catch((error) => {
+        if (settings.debugOverlay) {
+          console.error("TrialGuard: failed to send detection event", error);
+        }
+      });
     }
 
     if (detection.confidence >= DETECTION_CONFIDENCE_THRESHOLD && Date.now() >= interceptSnoozeUntil) {

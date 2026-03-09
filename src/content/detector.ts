@@ -33,21 +33,27 @@ function keywordRegexes(values: string[]): RegExp[] {
   return values.filter(Boolean).map((value) => new RegExp(escapeRegex(value), "i"));
 }
 
-function isCandidateVisible(element?: Element | null): boolean {
+function isCandidateVisible(element: Element | null | undefined, cache: WeakMap<Element, boolean>): boolean {
   if (!element) {
     return true;
   }
 
+  if (cache.has(element)) {
+    return cache.get(element)!;
+  }
+
+  let visible = true;
   if (element.getClientRects().length === 0) {
-    return false;
+    visible = false;
+  } else {
+    const style = window.getComputedStyle(element);
+    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+      visible = false;
+    }
   }
 
-  const style = window.getComputedStyle(element);
-  if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
-    return false;
-  }
-
-  return true;
+  cache.set(element, visible);
+  return visible;
 }
 
 function pickSnippet(text: string): string {
@@ -101,7 +107,7 @@ function extractTrialDays(text: string): { days: number; evidence?: string } | n
 
 function extractPriceAfterTrial(text: string): string | undefined {
   const match = text.match(
-    /(?:then|renew(?:s|al)?(?:\s+at|\s+on)?|billed|charged)[^$€£¥₹\d]{0,20}((?:[$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s?\d+(?:[.,]\d{1,2})?(?:\s*\/?\s*(?:month|year|week|mo|yr))?)/i
+    /(?:then|renew(?:s|al)?(?:\s+at|\s+on)?|billed|charged)[^$€£¥₹\d]{0,20}((?:[$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s?\d+(?:[.,]\d{1,2})?(?:\s*\/?\s*(?:per\s+)?(?:month|year|week|mo|yr))?)/i
   );
   return match?.[1]?.replace(/\s+/g, " ").trim();
 }
@@ -144,6 +150,8 @@ export function detectSubscriptionContext(args: {
   let renewalHits = 0;
   let subscriptionHits = 0;
 
+  const visibilityCache = new WeakMap<Element, boolean>();
+
   for (const candidate of args.candidates) {
     if (!candidate.text) {
       continue;
@@ -158,7 +166,7 @@ export function detectSubscriptionContext(args: {
       if (!regex.test(text)) {
         return false;
       }
-      if (!isCandidateVisible(candidate.element)) {
+      if (!isCandidateVisible(candidate.element, visibilityCache)) {
         return false;
       }
       evidence.add(`trial:regex_${idx}`);
@@ -169,7 +177,7 @@ export function detectSubscriptionContext(args: {
       if (!regex.test(text)) {
         return false;
       }
-      if (!isCandidateVisible(candidate.element)) {
+      if (!isCandidateVisible(candidate.element, visibilityCache)) {
         return false;
       }
       evidence.add(`renewal:regex_${idx}`);
@@ -180,7 +188,7 @@ export function detectSubscriptionContext(args: {
       if (!regex.test(text)) {
         return false;
       }
-      if (!isCandidateVisible(candidate.element)) {
+      if (!isCandidateVisible(candidate.element, visibilityCache)) {
         return false;
       }
       evidence.add(`subscription:regex_${idx}`);
