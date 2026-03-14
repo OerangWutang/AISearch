@@ -80,7 +80,6 @@
     renderDetections(detections);
   }
   void init().catch((error) => {
-    console.error("TrialGuard popup failed", error);
+    console.error("SubView popup failed", error);
   });
 })();
-//# sourceMappingURL=popup.js.map
