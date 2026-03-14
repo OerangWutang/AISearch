@@ -10,8 +10,8 @@ import {
   setReminders
 } from "./storage";
 
-const ALARM_PREFIX = "trialguard:reminder:";
-const TOS_ALARM_PREFIX = "trialguard:tos-warning:";
+const ALARM_PREFIX = "subview:reminder:";
+const TOS_ALARM_PREFIX = "subview:tos-warning:";
 
 export function alarmNameForReminder(reminderId: string): string {
   return `${ALARM_PREFIX}${reminderId}`;
@@ -37,7 +37,7 @@ function isTosAlarm(alarmName: string): boolean {
 
 function createNotification(
   notificationId: string,
-  options: chrome.notifications.NotificationOptions
+  options: chrome.notifications.NotificationCreateOptions
 ): Promise<string> {
   return new Promise((resolve) => {
     chrome.notifications.create(notificationId, options, (createdId) => resolve(createdId));
@@ -198,7 +198,7 @@ export async function handleReminderAlarm(alarmName: string): Promise<void> {
   }
 
   const isTos = isTosAlarm(alarmName);
-  const notificationId = `trialguard:notice:${reminder.id}:${Date.now()}`;
+  const notificationId = `subview:notice:${reminder.id}:${Date.now()}`;
 
   let title: string;
   let message: string;
@@ -220,7 +220,7 @@ export async function handleReminderAlarm(alarmName: string): Promise<void> {
       : `Reminder due now.${renewalInfo}${costInfo} Open the site to review and cancel if needed.`;
   }
 
-  const options: chrome.notifications.NotificationOptions = {
+  const options: chrome.notifications.NotificationCreateOptions = {
     type: "basic",
     iconUrl: "icons/icon128.png",
     title,
