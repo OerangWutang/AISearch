@@ -32,7 +32,7 @@ import { getDomainKey, getHostname } from "../shared/domain";
 import { uid } from "../shared/utils";
 
 type RegisteredScript = chrome.scripting.RegisteredContentScript;
-const DYNAMIC_CONTENT_SCRIPT_ID = "trialguard-content";
+const DYNAMIC_CONTENT_SCRIPT_ID = "subview-content";
 
 function getRegisteredContentScripts(ids?: string[]): Promise<RegisteredScript[]> {
   return new Promise((resolve) => {
@@ -58,13 +58,33 @@ function unregisterContentScripts(ids: string[]): Promise<void> {
   });
 }
 
+async function removeLegacyContentScripts(): Promise<void> {
+  // Remove any previously registered dynamic content scripts for "contentScript.js"
+  // that use legacy IDs, to avoid duplicate executions after ID changes.
+  const scripts = await getRegisteredContentScripts();
+  const legacyIds = scripts
+    .filter((script: RegisteredScript) => {
+      const usesContentScript =
+        Array.isArray((script as any).js) &&
+        (script as any).js.includes("contentScript.js");
+      return usesContentScript && script.id !== DYNAMIC_CONTENT_SCRIPT_ID;
+    })
+    .map((script) => script.id);
+
+  if (legacyIds.length > 0) {
+    await unregisterContentScripts(legacyIds);
+  }
+}
+
 function queryTabs(): Promise<chrome.tabs.Tab[]> {
   return new Promise((resolve) => {
     chrome.tabs.query({}, (tabs) => resolve(tabs));
   });
 }
 
-function executeContentScript(tabId: number): Promise<void> {
+async function executeContentScript(tabId: number): Promise<void> {
+  await removeLegacyContentScripts();
+
   return new Promise((resolve, reject) => {
     chrome.scripting.executeScript(
       {
@@ -117,7 +137,7 @@ async function ensureContentScriptRegistration(): Promise<void> {
         try {
           await executeContentScript(tab.id);
         } catch (error) {
-          console.debug(`[TrialGuard] Could not inject into tab ${tab.id}`, error);
+          console.debug(`[SubView] Could not inject into tab ${tab.id}`, error);
         }
       }
     }
