@@ -258,7 +258,7 @@
   }
   function formHasPaymentHints(form) {
     const fields = form.querySelectorAll("input, select, textarea");
-    for (const field of fields) {
+    for (const field of Array.from(fields)) {
       const text = textFromElement(field);
       if (includesAny(text, BASE_PAYMENT_TERMS) || /cc-number|cardnumber|cc-csc|cc-exp/i.test(text)) {
         return true;
@@ -295,7 +295,7 @@
   var BASE_RENEWAL_REGEX = [
     /renew(s|al)?\s+(at|on)/i,
     /then\s+([$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s*\d/i,
-    /(billed|charged)\s+(monthly|annually|per\s+month|per\s+year)/i
+    /(billed|charged)\s+(monthly|annually|yearly|weekly|per\s+month|per\s+year|per\s+week)/i
   ];
   var BASE_SUBSCRIPTION_REGEX = [
     /subscribe|subscription|membership/i,
@@ -308,14 +308,15 @@
     return values.filter(Boolean).map((value) => new RegExp(escapeRegex(value), "i"));
   }
   function isCandidateVisible(element) {
-    if (!element) {
+    const el = element?.deref();
+    if (!el) {
       return true;
     }
-    if (element.getClientRects().length === 0) {
+    if (el.getClientRects().length === 0) {
       return false;
     }
-    const style = window.getComputedStyle(element);
-    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+    const style = window.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden" || parseFloat(style.opacity) === 0) {
       return false;
     }
     return true;
@@ -363,12 +364,12 @@
   }
   function extractPriceAfterTrial(text) {
     const match = text.match(
-      /(?:then|renew(?:s|al)?(?:\s+at|\s+on)?|billed|charged)[^$€£¥₹\d]{0,20}((?:[$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s?\d+(?:[.,]\d{1,2})?(?:\s*\/?\s*(?:month|year|week|mo|yr))?)/i
+      /(?:then|renew(?:s|al)?(?:\s+at|\s+on)?|billed|charged)[^$€£¥₹\d]{0,20}((?:[$€£¥₹]|USD|CAD|AUD|GBP|EUR)\s?\d+(?:[.,]\d{1,2})?(?:\s*(?:per\s+|\/\s*)?(?:month|year|week|mo|yr))?)/i
     );
     return match?.[1]?.replace(/\s+/g, " ").trim();
   }
   function extractRenewalPeriod(text) {
-    const match = text.match(/(monthly|annually|per\s+month|per\s+year|per\s+week)/i);
+    const match = text.match(/(monthly|annually|yearly|weekly|per\s+month|per\s+year|per\s+week)/i);
     if (!match) {
       return void 0;
     }
@@ -717,7 +718,7 @@
             const clipped = text.slice(0, 300);
             budget.snippets += 1;
             budget.chars += clipped.length;
-            output.push({ text: clipped, element: parent });
+            output.push({ text: clipped, element: new WeakRef(parent) });
           }
         }
       }
@@ -813,7 +814,7 @@
       const elapsed = performance.now() - start;
       if (elapsed > 40) {
         console.debug(
-          `[TrialGuard] Heavy DOM scan: ${elapsed.toFixed(1)}ms for ${candidates.length} snippets (roots: ${rootNodes.size})`
+          `[SubView] Heavy DOM scan: ${elapsed.toFixed(1)}ms for ${candidates.length} snippets (roots: ${rootNodes.size})`
         );
       }
       if (candidates.length > 0) {
@@ -823,12 +824,12 @@
   };
 
   // src/content/overlay.ts
-  var TrialGuardOverlay = class {
+  var SubViewOverlay = class {
     constructor() {
       this.activeCallbacks = null;
       this.lastFocused = null;
       this.host = document.createElement("div");
-      this.host.id = "trialguard-root";
+      this.host.id = "subview-root";
       this.shadow = this.host.attachShadow({ mode: "open" });
       this.styleEl = document.createElement("style");
       this.styleEl.textContent = `
@@ -910,12 +911,12 @@
     }
     updateDebugHud(detection, note) {
       if (!detection) {
-        this.hud.textContent = note ? `TrialGuard: ${note}` : "TrialGuard: no detection";
+        this.hud.textContent = note ? `SubView: ${note}` : "SubView: no detection";
         return;
       }
       this.hud.textContent = "";
       const title = document.createElement("strong");
-      title.textContent = "TrialGuard";
+      title.textContent = "SubView";
       this.hud.appendChild(title);
       const lines = [
         `kind: ${detection.kind}`,
@@ -1137,7 +1138,7 @@
       payload: { origin: location.origin }
     });
     let settings = runtimeState.settings;
-    const overlay = new TrialGuardOverlay();
+    const overlay = new SubViewOverlay();
     overlay.setDebugEnabled(settings.debugOverlay);
     if (!runtimeState.hostAllowedForCurrentOrigin) {
       overlay.updateDebugHud(null, "host permission missing");
@@ -1286,7 +1287,7 @@
             if (reason === "continue") {
               const resumed = interceptor.continueBlockedFormSubmission();
               if (!resumed) {
-                alert("TrialGuard: Could not automatically resume checkout. Please click the checkout button again.");
+                alert("SubView: Could not automatically resume checkout. Please click the checkout button again.");
               }
             } else {
               interceptor.clearBlockedFormSubmission();
@@ -1307,7 +1308,6 @@
     }
   }
   void run().catch((error) => {
-    console.error("TrialGuard content script failed", error);
+    console.error("SubView content script failed", error);
   });
 })();
-//# sourceMappingURL=contentScript.js.map

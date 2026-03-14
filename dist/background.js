@@ -371,7 +371,7 @@
   }
 
   // src/background/reminders.ts
-  var ALARM_PREFIX = "trialguard:reminder:";
+  var ALARM_PREFIX = "subview:reminder:";
   function alarmNameForReminder(reminderId) {
     return `${ALARM_PREFIX}${reminderId}`;
   }
@@ -480,7 +480,7 @@
     if (!reminder) {
       return;
     }
-    const notificationId = `trialguard:notice:${reminder.id}:${Date.now()}`;
+    const notificationId = `subview:notice:${reminder.id}:${Date.now()}`;
     const options = {
       type: "basic",
       iconUrl: "icons/icon128.png",
@@ -542,7 +542,7 @@
     const reminderAt = new Date(reminder.reminderAt);
     const endAt = new Date(reminderAt.getTime() + 30 * 60 * 1e3);
     const dtstamp = toIcsUtcDateTime(/* @__PURE__ */ new Date());
-    const uid2 = `${reminder.id}@trialguard.local`;
+    const uid2 = `${reminder.id}@subview.local`;
     const summary = escapeIcsValue(`Cancel trial for ${reminder.domainKey}`);
     const descriptionLines = [
       `Domain: ${reminder.domainKey}`,
@@ -552,7 +552,7 @@
     const lines = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//TrialGuard//EN",
+      "PRODID:-//SubView//EN",
       "BEGIN:VEVENT",
       `UID:${escapeIcsValue(uid2)}`,
       `DTSTAMP:${dtstamp}`,
@@ -581,7 +581,7 @@
   async function exportReminderAsIcs(reminder) {
     const content = generateIcsForReminder(reminder);
     const safeDomain = reminder.domainKey.replace(/[^a-z0-9.-]/gi, "_") || "site";
-    const filename = `trialguard-cancel-${safeDomain}.ics`;
+    const filename = `subview-cancel-${safeDomain}.ics`;
     const url = `data:text/calendar;charset=utf-8,${encodeURIComponent(content)}`;
     await downloadFile(url, filename);
   }
@@ -710,7 +710,7 @@
   }
 
   // src/background/background.ts
-  var DYNAMIC_CONTENT_SCRIPT_ID = "trialguard-content";
+  var DYNAMIC_CONTENT_SCRIPT_ID = "subview-content";
   function getRegisteredContentScripts(ids) {
     return new Promise((resolve) => {
       chrome.scripting.getRegisteredContentScripts(ids ? { ids } : {}, (scripts) => resolve(scripts));
@@ -785,7 +785,7 @@
           try {
             await executeContentScript(tab.id);
           } catch (error) {
-            console.debug(`[TrialGuard] Could not inject into tab ${tab.id}`, error);
+            console.debug(`[SubView] Could not inject into tab ${tab.id}`, error);
           }
         }
       }
@@ -981,4 +981,3 @@
     return { hostname, domainKey };
   }
 })();
-//# sourceMappingURL=background.js.map

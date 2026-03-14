@@ -318,7 +318,7 @@
     exportDataButton.addEventListener("click", async () => {
       const data = await sendMessage({ type: "EXPORT_LOCAL_DATA" });
       const url = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
-      const filename = `trialguard-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+      const filename = `subview-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
       chrome.downloads.download({ url, filename, saveAs: true });
       setStatus("Export started");
     });
@@ -339,8 +339,7 @@
     });
   }
   void init().catch((error) => {
-    console.error("TrialGuard options failed", error);
+    console.error("SubView options failed", error);
     setStatus(`Error: ${error instanceof Error ? error.message : String(error)}`);
   });
 })();
-//# sourceMappingURL=options.js.map
