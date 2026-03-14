@@ -6,6 +6,7 @@ import type {
   UserSettings
 } from "../shared/types";
 import { parseCsv } from "../shared/utils";
+import { MODAL_BUFFER_MAX, MODAL_BUFFER_MIN } from "../shared/constants";
 
 function setStatus(text: string): void {
   const status = document.getElementById("status") as HTMLSpanElement;
@@ -72,6 +73,8 @@ async function init(): Promise<void> {
   enabledInput.checked = settings.enabled;
   requestOnStartupInput.checked = settings.requestAllSitesOnStartup;
   debugOverlayInput.checked = settings.debugOverlay;
+  bufferDaysInput.min = String(MODAL_BUFFER_MIN);
+  bufferDaysInput.max = String(MODAL_BUFFER_MAX);
   bufferDaysInput.value = String(settings.defaultBufferDays);
 
   trialKeywordsInput.value = toCsv(settings.keywordOverrides.trial);
