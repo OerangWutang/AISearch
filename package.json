@@ -10,7 +10,8 @@
     "watch": "node esbuild.config.mjs --mode=dev --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "stats": "node scripts/stats.mjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.27",

@@ -57,6 +57,7 @@ npm run watch       # dev rebuild on file changes
 npm run typecheck   # TypeScript checks
 npm run test        # Vitest unit tests
 npm run test:watch  # Vitest watch mode
+npm run stats       # report file count and KB sizes for src/ and dist/
 ```
 
 ## Permissions Model
