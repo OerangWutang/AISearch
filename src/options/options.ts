@@ -225,11 +225,19 @@ async function init(): Promise<void> {
   const exportDataButton = document.getElementById("exportData") as HTMLButtonElement;
   exportDataButton.addEventListener("click", async () => {
     const data = await sendMessage<ImportExportBlob>({ type: "EXPORT_LOCAL_DATA" });
-    const url = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
     const filename = `subview-export-${new Date().toISOString().slice(0, 10)}.json`;
 
-    chrome.downloads.download({ url, filename, saveAs: true });
-    setStatus("Export started");
+    chrome.downloads.download({ url, filename, saveAs: true }, (downloadId) => {
+      URL.revokeObjectURL(url);
+      const error = chrome.runtime.lastError;
+      if (error || !downloadId) {
+        setStatus(`Export failed: ${error?.message ?? "download could not be started"}`);
+      } else {
+        setStatus("Export started");
+      }
+    });
   });
 
   const importDataButton = document.getElementById("importData") as HTMLButtonElement;
