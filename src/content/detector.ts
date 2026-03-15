@@ -33,6 +33,31 @@ function keywordRegexes(values: string[]): RegExp[] {
   return values.filter(Boolean).map((value) => new RegExp(escapeRegex(value), "i"));
 }
 
+interface CompiledRegexes {
+  overrides: KeywordOverrides | undefined;
+  trial: RegExp[];
+  renewal: RegExp[];
+  subscription: RegExp[];
+}
+
+let _compiledRegexCacheKey: string | null = null;
+let _compiledRegexCache: CompiledRegexes | null = null;
+
+function getCompiledRegexes(overrides?: KeywordOverrides): CompiledRegexes {
+  const cacheKey = JSON.stringify(overrides ?? null);
+  if (_compiledRegexCache && _compiledRegexCacheKey === cacheKey) {
+    return _compiledRegexCache;
+  }
+  _compiledRegexCacheKey = cacheKey;
+  _compiledRegexCache = {
+    overrides,
+    trial: [...BASE_TRIAL_REGEX, ...keywordRegexes(overrides?.trial ?? [])],
+    renewal: [...BASE_RENEWAL_REGEX, ...keywordRegexes(overrides?.renewal ?? [])],
+    subscription: [...BASE_SUBSCRIPTION_REGEX, ...keywordRegexes(overrides?.subscription ?? [])]
+  };
+  return _compiledRegexCache;
+}
+
 function isCandidateVisible(element?: WeakRef<Element> | null): boolean {
   const el = element?.deref();
   if (!el) {
@@ -138,9 +163,7 @@ export function detectSubscriptionContext(args: {
   contextLoader: () => CheckoutContextResult;
   overrides?: KeywordOverrides;
 }): DetectionResult | null {
-  const trialRegexes = [...BASE_TRIAL_REGEX, ...keywordRegexes(args.overrides?.trial ?? [])];
-  const renewalRegexes = [...BASE_RENEWAL_REGEX, ...keywordRegexes(args.overrides?.renewal ?? [])];
-  const subscriptionRegexes = [...BASE_SUBSCRIPTION_REGEX, ...keywordRegexes(args.overrides?.subscription ?? [])];
+  const { trial: trialRegexes, renewal: renewalRegexes, subscription: subscriptionRegexes } = getCompiledRegexes(args.overrides);
 
   const evidence = new Set<string>();
   let trialDays: number | undefined;
@@ -161,11 +184,20 @@ export function detectSubscriptionContext(args: {
       continue;
     }
 
+    // Lazily compute visibility at most once per candidate — only when a regex first matches.
+    let _visible: boolean | undefined;
+    const isVisible = (): boolean => {
+      if (_visible === undefined) {
+        _visible = isCandidateVisible(candidate.element);
+      }
+      return _visible;
+    };
+
     const trialMatch = trialRegexes.some((regex, idx) => {
       if (!regex.test(text)) {
         return false;
       }
-      if (!isCandidateVisible(candidate.element)) {
+      if (!isVisible()) {
         return false;
       }
       evidence.add(`trial:regex_${idx}`);
@@ -176,7 +208,7 @@ export function detectSubscriptionContext(args: {
       if (!regex.test(text)) {
         return false;
       }
-      if (!isCandidateVisible(candidate.element)) {
+      if (!isVisible()) {
         return false;
       }
       evidence.add(`renewal:regex_${idx}`);
@@ -187,7 +219,7 @@ export function detectSubscriptionContext(args: {
       if (!regex.test(text)) {
         return false;
       }
-      if (!isCandidateVisible(candidate.element)) {
+      if (!isVisible()) {
         return false;
       }
       evidence.add(`subscription:regex_${idx}`);

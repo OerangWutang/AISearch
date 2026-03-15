@@ -163,6 +163,8 @@ export class SubViewOverlay {
     } else {
       document.body.focus();
     }
+
+    this.lastFocused = null;
   }
 
   showModal(params: {
